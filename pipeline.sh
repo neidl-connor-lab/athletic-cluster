@@ -256,5 +256,6 @@ samtools --version
 echo ""
 Rscript --version 
 echo ""
-$LOFREQ --version
+echo "LoFreq"
+$LOFREQ version
 echo ""
