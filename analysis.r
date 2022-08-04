@@ -13,16 +13,11 @@ colfun <- circlize::colorRamp2(0:3, c("#de2d26", "#000000", "#bdbdbd", "#ffffff"
 colsource <- c("Genomics"="#377eb8", "Contact tracing"="#4daf4a")
 
 ## inputs ----------------------------------------------------------------------
-# cluster info and labels
-meta <- read.csv("analysis/clusterinfo.csv")
-# add in dates
+# all samples
 meta <- read.csv("sampleinfo.csv",
+                 na.strings="",
                  colClasses=c(Collection.date="Date")) %>%
-        select(Barcode, Collection.date) %>%
-        right_join(meta, by="Barcode")
-# add in cluster IDs
-meta <- read.csv("clustering/clusters.csv") %>%
-        right_join(meta, by="Barcode")
+        select(Barcode, Collection.date, Lineage) 
 
 # load difference matrix and subset
 difs <- read.csv("clustering/difs.csv", row.names=1) %>%
@@ -30,10 +25,35 @@ difs <- read.csv("clustering/difs.csv", row.names=1) %>%
 colnames(difs) <- rownames(difs)
 
 ## figure 1 --------------------------------------------------------------------
-# figure 1A: heatmap of all BU
-png("analysis/heatmap-all.png", 
+# figure 1A: treemap of lineages
+meta %>%
+  na.omit() %>% 
+  # count total of each lineage
+  group_by(Lineage) %>%
+  summarise(Cases=n(),
+            .groups="drop") %>%
+  # keep top 11 for coloring purposes
+  arrange(desc(Cases)) %>%
+  mutate(Lineage=factor(Lineage, levels=c(unique(Lineage)[1:11], "Other"))) %>%
+  replace_na(list(Lineage="Other")) %>%
+  # group "other" into a single line
+  group_by(Lineage) %>%
+  summarise(Cases=sum(Cases),
+            .groups="drop") %>%
+  ggplot(aes(fill=Lineage, area=Cases, label=Lineage)) +
+  treemapify::geom_treemap(col="black") +
+  treemapify::geom_treemap_text(col="black", place="bottomleft") +
+  scale_fill_brewer(palette="Paired") +
+  theme(legend.position="none")
+ggsave("analysis/treemap.png", units="cm", width=10, height=10)
+ggsave("analysis/treemap.tiff", units="cm", width=10, height=10)
+
+# figure 1B: heatmap of all AY.3
+m <- filter(meta, Lineage=="AY.3")
+d <- difs[as.character(m$Barcode), as.character(m$Barcode)]
+png("analysis/heatmap-ay3.png", 
     units="cm", res=300, width=12, height=10)
-ComplexHeatmap::Heatmap(difs, name="# difs", 
+ComplexHeatmap::Heatmap(d, name="# difs", 
                         col=colfun,
                         row_dend_width=unit(1, "cm"),
                         border=TRUE,
@@ -41,9 +61,9 @@ ComplexHeatmap::Heatmap(difs, name="# difs",
                         show_column_dend=FALSE,
                         show_column_names=FALSE)
 dev.off()
-tiff("analysis/heatmap-all.tiff", 
+tiff("analysis/heatmap-ay3.tiff", 
      units="cm", res=300, width=12, height=10)
-ComplexHeatmap::Heatmap(difs, name="# difs", 
+ComplexHeatmap::Heatmap(d, name="# difs", 
                         use_raster=TRUE,
                         col=colfun,
                         row_dend_width=unit(1, "cm"),
@@ -52,8 +72,16 @@ ComplexHeatmap::Heatmap(difs, name="# difs",
                         show_column_dend=FALSE,
                         show_column_names=FALSE)
 dev.off()
+rm(m, d)
 
 ## figure 2A -------------------------------------------------------------------
+# add cluster info and labels to sample info
+meta <- read.csv("analysis/clusterinfo.csv") %>%
+        left_join(meta, by="Barcode")
+# add in cluster IDs
+meta <- read.csv("clustering/clusters.csv") %>%
+        right_join(meta, by="Barcode")
+
 # heatmap of epi only
 m <- filter(meta, Source=="Contact tracing")
 d <- difs[as.character(m$Barcode), as.character(m$Barcode)]
@@ -80,9 +108,7 @@ ComplexHeatmap::Heatmap(difs, name="# difs",
 dev.off()
 rm(m, d)
 
-## figure 3 --------------------------------------------------------------------
-# figure 3A: genomics 
-# heatmap of epi only
+# figure 2B: genomics 
 m <- meta %>%
      filter(Label!="Eliminated") %>%
      arrange(Source)
@@ -114,7 +140,7 @@ ComplexHeatmap::Heatmap(d, name="# difs",
 dev.off()
 rm(m, d, a)
 
-# figure 3B: accumulation
+# figure 2C: accumulation
 meta %>%
   filter(Label!="Eliminated") %>%
   arrange(Collection.date, Source) %>%
@@ -130,3 +156,22 @@ meta %>%
   theme(legend.position="bottom")
 ggsave("analysis/accumulation.png", units="cm", width=10, height=10)
 ggsave("analysis/accumulation.tiff", units="cm", width=10, height=10)
+
+
+## misc. stats -----------------------------------------------------------------
+# nucleotide change separating A & B identical clusters
+snvs.a <- read.csv("data/bu1762.csv") %>%
+          filter(Position > 265,
+                 Position < 29675,
+                 Percent > 50) %>%
+          select(NT.ID, AA.ID)
+snvs.b <- read.csv("data/bu1780.csv") %>%
+          filter(Position > 265,
+                 Position < 29675,
+                 Percent > 50) %>%
+          select(NT.ID, AA.ID)
+d <- which(!(snvs.b$NT.ID %in% snvs.a$NT.ID))
+snvs.b[d, ]
+
+# differences between eliminated samples and others (1797 & 1830)
+d <- 
