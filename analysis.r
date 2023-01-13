@@ -16,8 +16,7 @@ colsource <- c("Genomics"="#377eb8", "Contact tracing"="#4daf4a")
 # all samples
 meta <- read.csv("sampleinfo.csv",
                  na.strings="",
-                 colClasses=c(Collection.date="Date")) %>%
-        select(Barcode, Collection.date, Lineage) 
+                 colClasses=c(Collection.date="Date"))
 
 # load difference matrix and subset
 difs <- read.csv("clustering/difs.csv", row.names=1) %>%
@@ -97,7 +96,7 @@ ComplexHeatmap::Heatmap(d, name="# difs",
 dev.off()
 tiff("analysis/heatmap-epi.tiff", 
      units="cm", res=300, width=10, height=8)
-ComplexHeatmap::Heatmap(difs, name="# difs", 
+ComplexHeatmap::Heatmap(d, name="# difs", 
                         use_raster=TRUE,
                         col=colfun,
                         row_dend_width=unit(1, "cm"),
@@ -117,7 +116,7 @@ a <- columnAnnotation(Source=m$Source,
                       border=TRUE,
                       col=list(Source=colsource))
 png("analysis/heatmap-genomics.png", 
-    units="cm", res=300, width=12, height=8)
+    units="cm", res=300, width=17, height=8)
 ComplexHeatmap::Heatmap(d, name="# difs", 
                         col=colfun,
                         row_dend_width=unit(1, "cm"),
@@ -128,7 +127,7 @@ ComplexHeatmap::Heatmap(d, name="# difs",
                         show_column_names=FALSE)
 dev.off()
 tiff("analysis/heatmap-genomics.tiff", 
-     units="cm", res=300, width=12, height=8)
+     units="cm", res=300, width=17, height=8)
 ComplexHeatmap::Heatmap(d, name="# difs", 
                         col=colfun,
                         row_dend_width=unit(1, "cm"),
@@ -170,8 +169,15 @@ snvs.b <- read.csv("data/bu1780.csv") %>%
                  Position < 29675,
                  Percent > 50) %>%
           select(NT.ID, AA.ID)
-d <- which(!(snvs.b$NT.ID %in% snvs.a$NT.ID))
-snvs.b[d, ]
+x <- which(!(snvs.b$NT.ID %in% snvs.a$NT.ID))
+snvs.b[x, ]
+rm(snvs.a, snvs.b, x)
 
 # differences between eliminated samples and others (1797 & 1830)
-d <- 
+x <- meta %>%
+     filter(Label!="Eliminated") %>%
+     select(Barcode) %>%
+     unlist() %>%
+     as.character()
+min(difs["1797", x])
+min(difs["1830", x])
