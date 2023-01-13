@@ -1,6 +1,8 @@
 # Understanding SARS-CoV-2 transmission: Linking traditional contact tracing with genomic surveillance of a SARS-CoV-2 student cluster on a large urban campus
 Bioinformatic methods for iScience paper "Understanding SARS-CoV-2 transmission: Linking traditional contact tracing with genomic surveillance of a SARS-CoV-2 student cluster on a large urban campus"
 
+![](analysis/heatmap-genomics.png)
+
 ## Methods overview
 Sequencing libraries were generated using the ARTIC v4 primer sets and the Illumina COVIDSeq assay according to the manufacturer's protocol. Library pools were sequenced on a NextSeq 500 platform, generating 75x75 bp paired reads.
 
